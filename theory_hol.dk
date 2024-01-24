@@ -29,9 +29,12 @@ def EQ_MP : p : El bool -> q : El bool -> Prf (eq bool p q) -> Prf p -> Prf q.
 def TRANS : a : Set -> x : El a -> y : El a -> z : El a -> Prf (eq a x y) -> Prf (eq a y z) -> Prf (eq a x z) := a : Set => x : El a => y : El a => z : El a => xy : Prf (eq a x y) => yz : Prf (eq a y z) => EQ_MP (eq a x y) (eq a x z) (MK_COMB a bool (eq a x) (eq a x) y z (REFL (fun a bool) (eq a x)) yz) xy.
 def SYM : a : Set -> x : El a -> y : El a -> Prf (eq a x y) -> Prf (eq a y x) := a : Set => x : El a => y : El a => xy : Prf (eq a x y) => EQ_MP (eq a x x) (eq a y x) (MK_COMB a bool (eq a x) (eq a y) x x (MK_COMB a (fun a bool) (eq a) (eq a) x y (REFL (fun a (fun a bool)) (eq a)) xy) (REFL a x)) (REFL a x).
 
-[p,q] Prf (imp p q) --> Prf p -> Prf q.
-[a,p] Prf (all a p) --> x : El a -> Prf (p x).
-
+(; [p,q] Prf (imp p q) --> Prf p -> Prf q. ;)
+(; [a,p] Prf (all a p) --> x : El a -> Prf (p x). ;)
+def imp_intro : p : El bool -> q : El bool -> (Prf p -> Prf q) -> Prf (imp p q).
+def imp_elim : p : El bool -> q : El bool -> Prf (imp p q) -> Prf p -> Prf q.
+def all_intro : a : Set -> p : (El a -> El bool) -> (x : El a -> Prf (p x)) -> Prf (all a p).
+def all_elim : a : Set -> p : (El a -> El bool) -> Prf (all a p) -> x : El a -> Prf (p x).
 def top_intro : Prf T.
 def and_intro : p : El bool -> Prf p -> q : El bool -> Prf q -> Prf (and p q).
 def and_elim1 : p : El bool -> q : El bool -> Prf (and p q) -> Prf p.

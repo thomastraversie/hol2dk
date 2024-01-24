@@ -488,13 +488,30 @@ let proof tvs rmap =
        let Proof(th,_) = p in
        let l,r = binop_args (concl th) in
        out oc "and_elim2 %a %a %a" term l term r (sub k) p
-    | Pmp(k1,k2) -> out oc "%a %a" sub_at k1 sub_at k2
-    | Pdisch(t,k) -> out oc "%a : Prf %a => %a" (hyp_var ts) t term t sub_at k
-    | Pspec(t,k) -> out oc "%a %a" sub_at k term t
+    | Pmp(k1,k2) -> 
+       let p = proof_at k1 in
+       let Proof(th,_) = p in
+       let l,r = binop_args (concl th) in
+       out oc "imp_elim %a %a %a %a" 
+        term l term r (sub k1) p (sub k2) (proof_at k2)
+    | Pdisch(t,k) -> 
+      let p = proof_at k in
+      let Proof(th,_) = p in
+      out oc "imp_intro %a %a (%a : Prf %a => %a)" 
+        term t term (concl th) (hyp_var ts) t term t sub_at k
+    | Pspec(t,k) -> 
+      let p = proof_at k in
+      let Proof(th,_) = p in
+      begin match concl th with
+      | Comb(_,m) -> out oc "all_elim %a %a %a %a" typ (type_of t) term m sub_at k term t
+      | _ -> assert false
+      end   
     | Pgen(x,k) ->
+       let p = proof_at k in
+       let Proof(th,_) = p in
        let rmap' = add_var rmap x in
-       out oc "%a => %a"
-         (decl_var tvs rmap') x (subproof tvs rmap' [] [] ts k) (proof_at k)
+       out oc "all_intro %a %a (%a => %a)"
+       typ (type_of x) term (concl th) (decl_var tvs rmap') x (subproof tvs rmap' [] [] ts k) (proof_at k)
     | Pexists(p,t,k) ->
        out oc "ex_intro %a %a %a %a" typ (type_of t) term p term t sub_at k
     | Pdisj1(p,k) ->

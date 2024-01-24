@@ -387,13 +387,13 @@ let proof tvs rmap =
     | Pconj(k1,k2) -> out oc "∧ᵢ %a %a" sub_at k1 sub_at k2
     | Pconjunct1 k -> out oc "∧ₑ₁ %a" sub_at k
     | Pconjunct2 k -> out oc "∧ₑ₂ %a" sub_at k
-    | Pmp(k1,k2) -> out oc "%a %a" sub_at k1 sub_at k2
+    | Pmp(k1,k2) -> out oc "⇒ₑ %a %a" sub_at k1 sub_at k2
     | Pdisch(t,k) ->
-       out oc "λ %a : Prf %a, %a" (hyp_var ts) t term t sub_at k
-    | Pspec(t,k) -> out oc "%a %a" sub_at k term t
+       out oc "⇒ᵢ (λ %a : Prf %a, %a)" (hyp_var ts) t term t sub_at k
+    | Pspec(t,k) -> out oc "∀ₑ %a %a" sub_at k term t
     | Pgen(x,k) ->
        let rmap' = add_var rmap x in
-       out oc "λ %a, %a"
+       out oc "∀ᵢ (λ %a, %a)"
          (decl_var rmap') x (subproof tvs rmap' [] [] ts k) (proof_at k)
     | Pexists(p,t,k) -> out oc "∃ᵢ %a %a %a" term p term t sub_at k
     | Pdisj1(p,k) -> out oc "∨ᵢ₁ %a %a" sub_at k term p
