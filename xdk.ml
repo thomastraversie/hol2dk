@@ -509,9 +509,12 @@ let proof tvs rmap =
     | Pgen(x,k) ->
        let p = proof_at k in
        let Proof(th,_) = p in
+       let t = concl th in
+       let tt = Abs(x,t) in
        let rmap' = add_var rmap x in
        out oc "all_intro %a %a (%a => %a)"
-       typ (type_of x) term (concl th) (decl_var tvs rmap') x (subproof tvs rmap' [] [] ts k) (proof_at k)
+        typ (type_of x) term tt
+        (decl_var tvs rmap') x (subproof tvs rmap' [] [] ts k) (proof_at k)
     | Pexists(p,t,k) ->
        out oc "ex_intro %a %a %a %a" typ (type_of t) term p term t sub_at k
     | Pdisj1(p,k) ->
