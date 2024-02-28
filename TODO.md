@@ -1,6 +1,20 @@
 TODO
 ----
 
+- Makefile: add targets for dk output
+
+- simplify dk output of proofs by replacing [c : x:A -> B := x:A => t] by [c (x:A) : B := t].
+
+- use exact_no_check/vm_cast_no_check/native_cast_no_check in lambdapi export to coq
+
+- split big term_abbrevs files into various pieces
+
+- improve hash function on big terms
+
+- beta-normalize hol-light terms ?
+
+- remove the need for sed after lambdapi export -o stt_coq
+
 - remove/comment code for mk (i.e. use split as default)
 
 - improve efficiency of code outputing dk/lp (avoid multiple term traversals)
@@ -12,8 +26,6 @@ TODO
 - get rid of use file? in pos files, set pos to -1 for unused theorems?
 
 - simplify/purge proofs in parallel?
-
-- add commands for patch/unpatch/add-links ?
 
 - create doc on readthedocs.io
 

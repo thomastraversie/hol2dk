@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 1.0.0 (2024-02-25)
 
 ### Added
 
@@ -14,9 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - command simp is equivalent to rewrite and purge
 - command dump-simp is equivalent to dump, pos, use and simp
 - allow simultaneous dumping
-- Coq mapping for the option type
-- command split to generate a pos/use/stp file for each named theorem
-  (an stp file contains the starting position of the corresponding proof)
+- alignments of the types option, Sum, list, char, nadd
+- command split to generate a pos/use/sti/nbp file for each named theorem
+  (an sti file contains the starting index of the corresponding proof)
 - command theorem to generate the lp files corresponding to a named theorem
 - Makefile to generate and check lp and coq files generated with split
 - command size to get statistics on the size of terms
@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - use hash tables instead of maps to build abbreviations maps
 - use sharing when building canonical types and terms
 - add option --use-sharing for using sharing in lp output when defining term abbreviations
+- command nbp to get the number of proof steps
+- commands patch, unpatch and link to call the corresponding scripts
+- command env to print $HOL2DK_DIR and $HOLLIGHT_DIR
 
 ### Modified
 

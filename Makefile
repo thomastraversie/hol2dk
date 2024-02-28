@@ -1,19 +1,22 @@
 .SUFFIXES:
 
-BASE = $(shell basename `pwd`)
+BASE = $(shell if test -f BASE; then cat BASE; fi)
 
 STI_FILES := $(wildcard *.sti)
 
 .PHONY: default
 default:
-	@echo targets: sti lp mklp lpo v mkv vo
+	@echo "targets: split lp dep-lpo lpo v dep-vo vo opam clean-<target> clean-all"
 
-.PHONY: sti
-sti:
+.PHONY: dep
+dep: dep-lpo dep-vo
+
+.PHONY: split
+split:
 	hol2dk split $(BASE)
 
-.PHONY: clean-sti
-clean-sti:
+.PHONY: clean-split
+clean-split:
 	find . -maxdepth 1 -name '*.sti' -delete
 	find . -maxdepth 1 -name '*.nbp' -delete
 	find . -maxdepth 1 -name '*.pos' -a ! -name $(BASE).pos -delete
@@ -28,7 +31,7 @@ $(BASE_FILES:%=%.lp) &:
 .PHONY: lp
 lp: $(BASE_FILES:%=%.lp) $(STI_FILES:%.sti=%.lp)
 
-FILES_WITH_SHARING = #CHAIN_BOUNDARY_BOUNDARY GRASSMANN_PLUCKER_4 HOMOTOPIC_IMP_HOMOLOGOUS_REL_CHAIN_MAPS
+FILES_WITH_SHARING = $(shell if test -f FILES_WITH_SHARING; then cat FILES_WITH_SHARING; fi)
 
 $(FILES_WITH_SHARING:%=%.lp): HOL2DK_OPTIONS = --use-sharing
 
@@ -39,11 +42,15 @@ $(FILES_WITH_SHARING:%=%.lp): HOL2DK_OPTIONS = --use-sharing
 clean-lp:
 	find . -maxdepth 1 -name '*.lp' -a ! -name theory_hol.lp -delete
 
-.PHONY: mklp
-mklp lp.mk:
-	find . -maxdepth 1 -name '*.lp' -exec $(HOL2DK_DIR)/dep-lp.sh {} \; > lp.mk
+.PHONY: dep-lpo
+dep-lpo lpo.mk:
+	find . -maxdepth 1 -name '*.lp' -exec $(HOL2DK_DIR)/dep-lp.sh {} \; > lpo.mk
 
-include lp.mk
+include lpo.mk
+
+.PHONY: clean-dep-lpo
+clean-dep-lpo:
+	rm -f lpo.mk
 
 .PHONY: lpo
 lpo: theory_hol.lpo $(BASE_FILES:%=%.lpo) $(STI_FILES:%.sti=%.lpo) $(STI_FILES:%.sti=%_type_abbrevs.lpo) $(STI_FILES:%.sti=%_term_abbrevs.lpo)
@@ -66,18 +73,24 @@ v: theory_hol.v $(BASE_FILES:%=%.v) $(STI_FILES:%.sti=%.v) $(STI_FILES:%.sti=%_t
 clean-v:
 	find . -maxdepth 1 -name '*.v' -a ! -name coq.v -delete
 
-.PHONY: mkv
-mkv coq.mk: lp.mk
-	sed -e 's/\.lpo/.vo/g' -e 's/: theory_hol.vo/: coq.vo theory_hol.vo/' -e 's/theory_hol.vo:/theory_hol.vo: coq.vo/' lp.mk > coq.mk
-#find . -maxdepth 1 -name '*.v' -exec $(HOL2DK_DIR)/dep-coq.sh {} \; > coq.mk
+.PHONY: dep-vo
+dep-vo vo.mk: lpo.mk
+	sed -e 's/\.lpo/.vo/g' -e 's/: theory_hol.vo/: coq.vo theory_hol.vo/' -e 's/theory_hol.vo:/theory_hol.vo: coq.vo/' lpo.mk > vo.mk
+#find . -maxdepth 1 -name '*.v' -exec $(HOL2DK_DIR)/dep-coq.sh {} \; > vo.mk
 
-include coq.mk
+include vo.mk
+
+.PHONY: clean-dep-vo
+clean-dep-vo:
+	rm -f vo.mk
 
 .PHONY: vo
 vo: coq.vo theory_hol.vo $(BASE_FILES:%=%.vo) $(STI_FILES:%.sti=%.vo) $(STI_FILES:%.sti=%_type_abbrevs.vo) $(STI_FILES:%.sti=%_term_abbrevs.vo) $(FILES_WITH_SHARING:%=%_subterm_abbrevs.vo)
 
+COQC_OPTIONS = # -w -coercions
 %.vo: %.v
-	coqc -R . HOLLight $<
+	@echo coqc $<
+	@coqc $(COQC_OPTIONS) -R . HOLLight $<
 
 .PHONY: clean-vo
 clean-vo:
@@ -86,6 +99,17 @@ clean-vo:
 	find . -maxdepth 1 -name '.*.aux' -delete
 	rm -f .lia.cache .nia.cache
 
+.PHONY: opam
+opam: $(BASE)_opam.vo
+
+.PRECIOUS: $(BASE)_opam.v
+
+$(BASE)_opam.lp:
+	hol2dk axm $(BASE).lp
+
+.PHONY: clean-opam
+clean-opam:
+	rm -f $(BASE)_opam.*
+
 .PHONY: clean-all
-clean-all: clean-sti clean-lp clean-lpo clean-v clean-vo
-	rm -f lp.mk coq.mk
+clean-all: clean-split clean-lp clean-dep-lpo clean-lpo clean-v clean-dep-vo clean-vo clean-opam

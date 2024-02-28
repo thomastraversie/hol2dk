@@ -24,6 +24,15 @@ Options
 
 --print-stats: print statistics on hash tables at exit
 
+Patching commands
+-----------------
+
+hol2dk patch
+  patch the $HOLLIGHT_DIR sources
+
+hol2dk unpatch
+  unpatch the $HOLLIGHT_DIR sources
+
 Dumping commands
 ----------------
 
@@ -66,6 +75,9 @@ hol2dk $file.[dk|lp] $thm_id
 Multi-threaded lp file generation by having a file for each named theorem
 -------------------------------------------------------------------------
 
+hol2dk link $file
+  add links to files needed to translate and check $file.prf
+
 hol2dk split $file
   generate $file.thp and the files $t.sti, $t.pos and $t.use
   for each named theorem $t
@@ -94,6 +106,12 @@ hol2dk axm $file.[dk|lp]
 
 Other commands
 --------------
+
+hol2dk env
+  print the values of $HOL2DK_DIR and $HOLLIGHT_DIR
+
+hol2dk nbp $file
+  print the number of proof steps in $file.prf
 
 hol2dk proof $file $x $y
   print proof steps between theorem indexes $x and $y
@@ -336,6 +354,20 @@ let print_hstats() =
     hstats (TrmHashtbl.stats htbl_term_abbrev)
     hstats (TrmHashtbl.stats htbl_subterms)
 
+let valid_coq_filename s = match s with "at" -> "_" ^ s | _ -> s;;
+
+let call_script s args =
+  match Sys.getenv_opt "HOL2DK_DIR" with
+  | None -> log "set $HOL2DK_DIR first"; 1
+  | Some d -> Sys.command (d ^ "/" ^ s ^ " " ^ String.concat " " args)
+;;
+
+let print_env_var n =
+  match Sys.getenv_opt n with
+  | None -> log "%s is undefined\n" n
+  | Some v -> log "%s = \"%s\"\n" n v
+;;
+
 let rec log_command l =
   log "\nhol2dk"; List.iter (log " %s") l; log " ...\n"; command l
 
@@ -383,6 +415,11 @@ and command = function
        (fun f -> List.iter (log "%s %s\n" f) (thms_of_file f))
        (files());
      0
+
+  | ["env"] -> print_env_var "HOL2DK_DIR"; print_env_var "HOLLIGHT_DIR"; 0
+  | ["patch" as s] -> call_script s []
+  | ["unpatch" as s] -> call_script s []
+  | ["link";arg] -> call_script "add-links" [arg]
 
   | ["dump";f] -> dump true f (basename_ml f)
   | ["dump-use";f] -> dump false f (basename_ml f)
@@ -453,6 +490,8 @@ and command = function
      print_histogram thm_uses;
      print_rule_uses rule_uses (nb_proofs - !unused);
      0
+
+  | ["nbp";b] -> log "%#d proof steps\n" (read_val (b ^ ".nbp")); 0
 
   | ["size";b] -> command ["size";b;"0"]
   | ["size";b;l] ->
@@ -795,7 +834,7 @@ and command = function
      let map_thid_name = read_val (b ^ ".thm") in
      let map = ref MapInt.empty in
      let create_segment start_index end_index =
-       let n = try MapInt.find end_index map_thid_name
+       let n = try valid_coq_filename (MapInt.find end_index map_thid_name)
                with Not_found -> "thm" ^ string_of_int end_index in
        let len = end_index - start_index + 1 in
        write_val (n ^ ".nbp") len;
@@ -825,7 +864,7 @@ and command = function
          end
      done;
      create_segment 0 !end_idx;
-     MapInt.iter (fun i (n,_) -> log "%d %s\n" i n) !map;
+     (*MapInt.iter (fun i (n,_) -> log "%d %s\n" i n) !map;*)
      write_val (b ^ ".thp") !map;
      0
 
