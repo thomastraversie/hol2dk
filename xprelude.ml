@@ -6,13 +6,24 @@
 unset_jrh_lexer;;
 REMOVE*)
 
-(* We use Printf since it is more efficient than Format. *)
+(* Remark: we use Printf since it is more efficient than Format. *)
 
 (* [out oc s args] outputs [s] with [args] on out_channel [oc]. *)
 let out = Printf.fprintf;;
 
 (* [log oc s args] outputs [s] with [args] on stdout. *)
 let log = Printf.printf;;
+
+let log_gen s =
+  print_string "generate "; print_string s; print_string " ...\n";
+  flush stdout;;
+
+let log_read s =
+  print_string "read "; print_string s; print_string " ...\n";
+  flush stdout;;
+
+(* [err oc s args] outputs [s] with [args] on stderr. *)
+let err = Printf.eprintf;;
 
 (* [time_of p] executes [p:unit -> unit] and prints on stdout the time
    taken to execute [p]. *)
@@ -34,6 +45,7 @@ let print_time =
 (* Maps on integers. *)
 module OrdInt = struct type t = int let compare = (-) end;;
 module MapInt = Map.Make(OrdInt);;
+module SetInt = Set.Make(OrdInt);;
 
 (* [map_thm_id_name] is used to hold the map from theorem numbers to
    theorem names. *)
@@ -59,12 +71,6 @@ let map_file_thms = ref (MapStr.empty : string list MapStr.t);;
 (* [map_file_deps] is used to hold the dependency graph of HOL-Light
    files, that is, the map from file names to their dependencies. *)
 let map_file_deps = ref (MapStr.empty : string list MapStr.t);;
-
-(* indicates whether the constant "el" has been added. *)
-(*let el_added = ref false;;*)
-
-(* indicates whether type and term abbreviations should be used. *)
-let use_abbrev = ref true;;
 
 (*REMOVE
 set_jrh_lexer;;

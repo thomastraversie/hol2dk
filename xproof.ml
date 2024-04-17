@@ -35,8 +35,10 @@ let read_pos b = prf_pos := read_val (b ^ ".pos");;
 (* [!map_thid_pos] maps proof indexes to positions. *)
 let map_thid_pos : (string * int) MapInt.t ref = ref MapInt.empty;;
 
+(* Dependencies of the current theorem wrt previous theorems. *)
 let thdeps = ref SetStr.empty;;
 
+(* [get_pos k] returns the position of the theorem [k]. *)
 let get_pos k =
   let k' = k - !the_start_idx in
   (*log "get_pos %d - %d = %d\n%!" k !the_start_idx k';*)
@@ -49,6 +51,9 @@ let get_pos k =
       log "theorem %d not found\n%!" k; raise Not_found
 ;;
 
+(* Size of the last read proof. *)
+let step_size = ref 0;;
+
 (* [proof_at k] returns the proof of index [k]. Can be used after
    [read_pos] and [init_proof_reading] only. *)
 let proof_at k =
@@ -56,7 +61,18 @@ let proof_at k =
   let p = get_pos k in
   (*log "get_pos %d = %d\n%!" k p;*)
   seek_in ic p;
-  input_value ic;;
+  let v = input_value ic in
+  step_size := pos_in ic - p;
+  v
+;;
+
+(* Tree size of proof steps. *)
+let thm_size : int Array.t ref  = ref [||];;
+
+(* [size_proof_at k] gives the size of the proof of index [k]. *)
+let size_proof_at k =
+  if Array.length !thm_size > 0 then !thm_size.(k - !the_start_idx) else 0
+;;
 
 (* [(!last_use).(i) = 0] if [i] is a named theorem, the highest
    theorem index using [i] if there is one, and -1 otherwise. *)
@@ -68,6 +84,3 @@ let get_use k =
   let k' = k - !the_start_idx in
   (*log "get_use %d - %d = %d\n%!" k !the_start_idx k';*)
   Array.get !last_use k';;
-
-(* [!cur_part_max] indicates the maximal index of the current part. *)
-let cur_part_max : int ref = ref (-1);;

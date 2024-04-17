@@ -1,6 +1,249 @@
 NOTES
 -----
 
+## 15/04/24
+
+
+## 14/04/24
+
+With PR #126 (generation of spec files):
+
+hol: lp 36s v 25s spec 7s vo -j32 16m22s
+
+Multivariate/make_upto_topology: vo -j32 423m + -j8 62m = 8h
+
+## 09/04/24
+
+Huge improvements in file generation and coq checking:
+
+With PR #120 (use a single type_abbrevs file):
+
+hol: lp 38s v 30s vo -j32 23m51s
+
+With PR #119 (optimization of printing functions):
+
+Multivariate/make_upto_topology: lp 18m11s v 18m43s
+
+## 05/04/24
+
+Multivariate/make_upto_topology: lp 36m13s v 24m
+
+## 03/04/24
+
+With PR #111: Not printing types for lemmas (proof steps) slightly reduces Coq compilation time. For instance, checking hol.ml in Coq takes 28m3s instead of 31m35s (-11%).
+
+With PR #110, --max-proof-size 500_000 --max-abbrev-size 2_000_000:
+- URYSOHN_LEMMA: lp 38s v 13s vo -j32 27m43s
+- CHAIN_BOUNDARY_BOUNDARY: lp 2m33 v 39s vo -j32 2h58m
+- GRASSMANN_PLUCKER_4: size 4m55s lp 1m35s v 1m41s vo -j16 60m22s
+- HOMOTOPIC_IMP_HOMOLOGOUS_REL_CHAIN_MAPS: lp 8m9s v 2m vo -j32 9h37m
+
+## 26/03/24
+
+The PR #108 and #109 improves the generation time of big theorems very significantly:
+
+- URYSOHN_LEMMA: 1m6s instead of 6m30s
+- CHAIN_BOUNDARY_BOUNDARY: 3m40s instead of 56m
+- GRASSMANN_PLUCKER_4: 12m11s instead of 3h25m
+- HOMOTOPIC_IMP_HOMOLOGOUS_REL_CHAIN_MAPS: 17m23s instead of 6h49m
+
+It however has a negative impact on small libraries:
+
+- hol.ml: lp 56s v 47s vo 43m13s instead of lp 42s v 45s vo 31m35s
+
+This is because much more files are generated: each term abbreviation file now has its own type abbreviation file and, when splitting proof files, each proof part file has its own term abbreviation files.
+
+## 22/03/24
+
+generation of term abbreviations in parallel
+
+make lp-stage2 can be run in parallel of make lp-stage1 after some time
+
+## 15/03/24
+
+optimize dependencies on proofs too:
+
+hol.ml --max-abbrevs 20000: make -j32 lp 45s v 41s -j16 vo 37m28s
+hol.ml --max-abbrevs 10000: make -j32 lp 47s v 47s -j16 vo 42m30s
+
+## 13/03/24
+
+optimize dependencies on term_abbrevs:
+
+hol.ml --max-abbrevs 20000: make -j32 lp 42s v 41s -j16 vo 32m40s
+
+## 12/03/24
+
+splitting term abbrevs by size instead of by number:
+
+hol.ml --max-abbrevs 20000: make -j32 lp 41s v 47s -j16 vo 37m3s
+
+## 11/03/24
+
+generation of .lpo.mk files:
+
+hol.ml:
+  - without generation: make -j32 lp 47s dep-lpo 42s
+  - with generation: make -j32 lp 46s dep-lpo 0.4s
+
+## 07/03/24
+
+  * URYSOHN_LEMMA*.vo: --max-size 500000 --max-abbrevs 250 -j16 ~20m
+  * CHAIN_BOUNDARY_BOUNDARY*.vo: --max-size 500000 --max-abbrevs 250 -j16 ~120m
+  * GRASSMANN_PLUCKER_4: --max-size 20000 --max-abbrevs 100 -j1 ~40m
+  * HOMOTOPIC_IMP_HOMOLOGOUS_REL_CHAIN_MAPS: --max-size 20000 --max-abbrevs 250 out of memory
+
+## 06/03/24
+
+  * CHAIN_BOUNDARY_BOUNDARY.lp: 38m50s
+  --with-sharing --max-abbrevs 700: 47m14s
+  
+  * CHAIN_BOUNDARY_BOUNDARY_term_abbrevs*.vo:
+  --max-abbrevs 500 -j16: 15m52s
+  --max-abbrevs 250 -j32: 14m56s
+  --max-abbrevs 100 -j32: 15m45s
+
+## 05/03/24
+
+  * Coq does not handle let's efficiently: https://github.com/coq/coq/issues/18753. Currently, on my machine, I can handle a maximum of 4981 let's. But it may rather depends on the height than on the actual number of let's.
+
+  * Gulliver: 56 processors Intel Core Processor (Haswell, no TSX) 2.3 Ghz cache 16 Mo RAM 122 Go
+
+    hol.ml: dump-simp-use 6m7s split 2s make -j56 lp 1m14s v 45s dep-lpo 1m46s vo 38m46s
+
+    Multivariate/make_upto_topology.ml: dump-simp 1h55m36s split 13s
+    --with-sharing: make -j56 lp 10h22m v 20m5s dep-lpo 9m1s
+
+## 04/03/24
+
+The generation of `URYSOHN_LEMMA.lp` takes 6m30s. `URYSOHN_LEMMA_term_abbrevs.lp` has 100_000 abbreviations. Compilation of the corresponding Coq files depending on `--max-abbrevs`:
+
+| max-abbrevs | term_abbrevs.v | URYSOHN_LEMMA.v |
+|-------------|----------------|-----------------|
+| 50_000      | 5m48s          | 20m40s          |
+| 10_000      | 1m4s           | 21m33s          |
+| 5_000       | 35s            | 21m27s          |
+
+## 25/02/24
+
+Performances on a machine with 32 processors i9-13950HX and 64G RAM:
+
+Dumping, simplification and translation of `Logic/make.ml` with `split`:
+  * dump-simp 10m29s 10G 83% useless (including hol.ml)
+  * lp 57s 1.2G
+  * v 43s vo (-j20) 34m10s
+
+Dumping and translation of `Logic/make.ml` with `mk 32` (includes `Library/analysis`):
+  * dump-simp 11m42s 10G 21.2M steps (83% unused including hol.ml) +1729 named theorems
+  * dk 1m13s dko 4m15s lp 42s v 12s vo 1h11m
+
+Dumping, simplification and translation of `Arithmetic/make.ml` with `split`:
+  * dump-simp 6m2s 5.4G 82% useless (including hol.ml) 2.5M steps
+  * lp 21s 734M
+  * v 31s 682M vo (-j20) 32m
+
+Dumping of `hol.ml`:
+  * checking time without proof dumping: 1m14s
+  * checking time with proof dumping: 1m44s (+40%)
+  * dumped file size: 3G
+  * number of named theorems: 2842
+  * number of proof steps: 8.5M (8% unused)
+  * simplification time: 1m22s
+  * number of simplifications: 1.2M (14%)
+  * unused proof steps after simplification: 29%
+  * purge time: 11s
+  * unused proof steps after purge: 60%
+
+| rule       |  % |
+|:-----------|---:|
+| comb       | 20 |
+| term_subst | 17 |
+| refl       | 16 |
+| eqmp       | 12 |
+| trans      |  9 |
+| conjunct1  |  6 |
+| abs        |  3 |
+| beta       |  3 |
+| mp         |  3 |
+| sym        |  2 |
+| deduct     |  2 |
+| type_subst |  2 |
+| assume     |  1 |
+| conjunct2  |  1 |
+| disch      |  1 |
+| spec       |  1 |
+| disj_cases |  1 |
+| conj       |  1 |
+
+Multi-threaded translation of `hol.ml` to Lambdapi and Coq with `split`:
+  * make split: <1s
+  * make -j32 lp: 42s 1.1G (41s 1.2G with sharing)
+  * make -j16 lpo: 51m10s 9G
+  * make -j32 v: 45s 1.1G (47s 1.1G with sharing)
+  * make -j16 vo: 31m35s 3.1G (40m37s 3.5G with sharing)
+
+Multi-threaded translation of `hol.ml` to Lambdapi and Coq with `mk 100`:
+  * hol2dk mk 100: 16s
+  * make -j32 lp: 31s 1.1G type abbrevs 796K term abbrevs 583M (53%)
+  * make -j32 lpo: fails (too big for lambdapi)
+  * make -j32 v: 24s 1G
+  * make -j32 vo: 1h4m
+
+Multi-threaded translation of `hol.ml` to Dedukti with `mk 100`:
+  * make -j32 dk: 1m10s 1.4G type abbrevs 876K term abbrevs 640M (46%)
+  * dkcheck: 4m11s
+  * kocheck: 5m33s
+
+Single-threaded translation of `hol.ml` to Lambdapi:
+  * lp files generation: 5m4s 1.1G type abbrevs 308K term abbrevs 524M (48%)
+
+Single-threaded translation of `hol.ml` to Dedukti:
+  * dk files generation: 9m39s 1.3G type abbrevs 348K term abbrevs 570M (44%)
+
+Dumping and translation of `hol.ml` upto `arith.ml` with `mk 7`:
+  * proof dumping time: 11s 77M 448 named theorems
+  * number of proof steps: 302 K (9% unused)
+  * prf simplification: 2s
+  * unused proofs after simplification: 31%
+  * unused proofs after purge: 66%
+  * dk file generation: 1s 29M
+  * checking time with dk check: 4s
+  * lp file generation: 1s 21M
+  * checking time with lambdapi: 31s
+  * translation to Coq: 1s 20M
+  * checking time for Coq 8.18.0: 1m7s
+
+**Generating full Q0 proofs:**
+
+Dumping of `hol.ml`:
+  * ocaml cheking without proof dumping: 1m14s
+  * ocaml proof dumping: 2m9s (+74%)
+  * proof size file: 5.5G
+  * number of proof steps: 14.3M
+
+| rule       |  % |
+|:-----------|---:|
+| refl       | 26 |
+| eqmp       | 21 |
+| term_subst | 15 |
+| trans      | 11 |
+| comb       | 10 |
+| deduct     |  7 |
+| type_subst |  4 |
+| abs        |  2 |
+| beta       |  2 |
+| assume     |  2 |
+
+Dumping of `hol.ml` upto `arith.ml` (by commenting from `loads "wf.ml"` to the end):
+  * ocaml proof dumping: 13.2s
+  * number of proof steps: 564351
+  * proof dumping: 1.4s 157M
+  * dk file generation: 45s 153M
+  * checking time with dk check: 26s
+  * checking time with kocheck -j7: 22s
+  * lp file generation: 29s 107M
+  * checking time with lambdapi: 2m49s
+
 ## 02/02/24
 
 Translation of `Multivariate/make.ml` upto `topology.ml`:
@@ -129,9 +372,9 @@ a solution is to use (maximal) sharing when building the map of term abbreviatio
 
 but sharing increases generation time significantly
 
-with split and -j32, hol.lp is generated in 40s instead of 32s (+25%)
+with split and -j32, hol.ml is translated to lp in 40s instead of 32s (+25%)
 
-in singly-threaded mode, hol.lp is generated in 4m59s instead of 4m7s (+21%)
+in singly-threaded mode, hol.ml is translated to lp in 4m59s instead of 4m7s (+21%)
 
 however GRASSMANN_PLUCKER_4.lp can now be generated in 2 hours (119m23s)
 

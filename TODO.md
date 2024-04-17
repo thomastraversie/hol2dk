@@ -1,13 +1,37 @@
 TODO
 ----
 
+- in lambdapi export to coq: Prop never used! bool should not be in erasing.lp
+
+- in lp output, replace T by ⊤ ?
+
+- generate lp spec files in ocaml to optimize dependencies (spec files should use no term abbreviations) ?
+
+- write progress in an ocaml program, and estimate time wrt size of files
+
+- use a single term_abbrev file for each theorem, and split it
+
+- pre-compute once and for all the type and term variables of axioms and definitions
+
+- compute proof tree sizes in parallel ?
+
+- really remove useless proof steps to save memory (=> use files are not necessary afterwards)
+
+- record times to generate proofs and term_abbrevs files of each theorem ?
+
+- optimize number of let's (use a let only if an abbreviation is used more than once)
+
+- remove base argument in all commands by using BASE file
+
+- rename file _term by _sig
+
+- use subterm_abbrevs even without using --sharing ? keep subterm_abbrevs at all ?
+
 - Makefile: add targets for dk output
 
 - simplify dk output of proofs by replacing [c : x:A -> B := x:A => t] by [c (x:A) : B := t].
 
-- use exact_no_check/vm_cast_no_check/native_cast_no_check in lambdapi export to coq
-
-- split big term_abbrevs files into various pieces
+- use exact_no_check/vm_cast_no_check/native_cast_no_check in lambdapi export to coq ? can work only if there is no implicit argument and no need for implicit coercions
 
 - improve hash function on big terms
 
@@ -15,11 +39,9 @@ TODO
 
 - remove the need for sed after lambdapi export -o stt_coq
 
-- remove/comment code for mk (i.e. use split as default)
+- remove/comment code for mk? (i.e. use split as default)
 
 - improve efficiency of code outputing dk/lp (avoid multiple term traversals)
-
-- generate lp.mk and coq.mk at the same time as lp files
 
 - extend split command to dedukti output
 

@@ -35,21 +35,32 @@ let iter_parts nb_proofs nb_parts f =
 ;;
 
 (****************************************************************************)
-(* Functions on basic data structures. *)
+(* Functions on numbers. *)
 (****************************************************************************)
 
-let percent k n = (100 * k) / n
+let percent k n = (100 * k) / n;;
 
-(* [pos_first f l] returns the position (counting from 0) of the first
-   element of [l] satisfying [f]. Raises Not_found if there is no such
-   element. *)
-let pos_first f =
-  let rec aux k l =
-    match l with
-    | [] -> raise Not_found
-    | y::l -> if f y then k else aux (k+1) l
-  in aux 0
+(****************************************************************************)
+(* Functions on system calls. *)
+(****************************************************************************)
+
+let command s =
+  if Sys.command s <> 0 then (log "Error: \"%s\" failed.\n" s; exit 1);;
+
+(****************************************************************************)
+(* Functions on files. *)
+(****************************************************************************)
+
+let open_file n = log_gen n; open_out n;;
+
+let create_file n f = let oc = open_file n in f oc; close_out oc;;
+
+let concat f1 f2 f3 =
+  log "generate %s ...\n%!" f3;
+  command (Printf.sprintf "cat %s %s > %s && rm -f %s %s" f1 f2 f3 f1 f2)
 ;;
+
+let rename f1 f2 = log "rename %s into %s ...\n%!" f1 f2; Sys.rename f1 f2;;
 
 (* [string_of_file f] puts the contents of file [f] in a string. *)
 let string_of_file f =
@@ -63,7 +74,7 @@ let string_of_file f =
 
 (* [read_val f] reads value from file [f]. *)
 let read_val dump_file =
-  log "read %s ...\n%!" dump_file;
+  log_read dump_file;
   let ic = open_in_bin dump_file in
   let v = input_value ic in
   close_in ic;
@@ -71,10 +82,40 @@ let read_val dump_file =
 
 (* [write_val f v] write [v] in file [f]. *)
 let write_val dump_file v =
-  log "write %s ...\n%!" dump_file;
+  log_gen dump_file;
   let oc = open_out_bin dump_file in
   output_value oc v;
   close_out oc
+
+(****************************************************************************)
+(* Functions on strings. *)
+(****************************************************************************)
+
+let add_prefix prefix f x = prefix^f x;;
+
+let concat_map f xs = String.concat "" (List.map f xs);;
+
+let part i = "_part_" ^ string_of_int i;;
+
+(* [get_part s suffix] returns [Some(n,k)] if [s=n^suffix^part(k)],
+   and [None] otherwise. *)
+let get_part s suffix =
+  try
+    let len_s = String.length s in
+    let i = ref (len_s - 1) in
+    (* compute part number *)
+    let k =
+      while !i >= 0 && s.[!i] <> '_' do decr i done;
+      if !i < 0 then raise Exit;
+      int_of_string (String.sub s (!i+1) (len_s - 1 - !i))
+    in
+    (* compute theorem name *)
+    let len_suffix = String.length suffix + String.length "_part_" in
+    if !i < len_suffix then raise Exit;
+    let n = String.sub s 0 (!i - len_suffix + 1) in
+    Some(n,k)
+  with Exit -> None
+;;
 
 (* [replace c1 c2 s] returns a new string identical to [s] but with
    every character [c1] replaced by [c2]. *)
@@ -121,20 +162,58 @@ let rec change_prefixes l s =
      else change_prefixes l s
 
 (****************************************************************************)
-(* Printing functions. *)
+(* Functions on lists. *)
 (****************************************************************************)
 
-let int oc k = out oc "%d" k;;
+(* [pos_first f l] returns the position (counting from 0) of the first
+   element of [l] satisfying [f]. Raises Not_found if there is no such
+   element. *)
+let pos_first f =
+  let rec aux k l =
+    match l with
+    | [] -> raise Not_found
+    | y::l -> if f y then k else aux (k+1) l
+  in aux 0
+;;
 
-let string oc s = out oc "%s" s;;
+(****************************************************************************)
+(* Functions on hash tables. *)
+(****************************************************************************)
 
-let ostring oc s = out oc "\"%s\"" s;;
+(* [bindings ht] returns the list of bindings in the hash table [ht]. *)
+let bindings ht = Hashtbl.fold (fun x y acc -> (x,y)::acc) ht [];;
+let sorted_bindings ht = List.sort Stdlib.compare (bindings ht);;
 
-let pair f g oc (x, y) = out oc "%a, %a" f x g y;;
+(* [array_of_hashtbl ht] turns an hash table into an array. *)
+let array_of_hashtbl ht =
+  Array.init (Hashtbl.length ht) (Hashtbl.find ht)
+;;
 
-let opair f g oc (x, y) = out oc "(%a, %a)" f x g y;;
+(****************************************************************************)
+(* Printing functions. See
+https://www.lexifi.com/blog/ocaml/note-about-performance-printf-and-format/#*)
+(****************************************************************************)
 
-let prefix p elt oc x = out oc "%s%a" p elt x;;
+let char = output_char;;
+
+let string = output_string;;
+
+let int oc k = string oc (string_of_int k);;
+
+let quote f oc x = char oc '\"'; f oc x; char oc '\"';;
+let paren f oc x = char oc '('; f oc x; char oc ')';;
+let set f oc x = char oc '{'; f oc x; char oc '}';;
+let bracket f oc x = char oc '['; f oc x; char oc ']';;
+
+let ostring = quote string;;
+
+let digest oc d = string oc (Digest.to_hex d);;
+
+let pair f g oc (x,y) = f oc x; char oc ','; g oc y;;
+let opair f g = paren (pair f g);;
+
+let prefix pre elt oc x = string oc pre; elt oc x;;
+let suffix elt suf oc x = elt oc x; string oc suf;;
 
 let list_sep sep elt oc xs =
   match xs with
@@ -142,11 +221,21 @@ let list_sep sep elt oc xs =
   | x::xs -> elt oc x; List.iter (prefix sep elt oc) xs
 ;;
 
-let list elt oc xs = list_sep "" elt oc xs;;
-
-let olist elt oc xs = out oc "[%a]" (list_sep "; " elt) xs;;
-
+let list elt oc = List.iter (elt oc);;
+let olist elt = bracket (list_sep "; " elt);;
 let list_prefix p elt oc xs = list (prefix p elt) oc xs;;
+
+let array elt oc = Array.iter (elt oc);;
+let oarray elt = bracket (array (suffix elt "; "));;
+
+let set_int oc s =
+  char oc '{'; SetInt.iter (fun k -> int oc k; char oc ';') s; char oc '}';;
+let set_str oc s =
+  char oc '{'; SetStr.iter (fun s -> string oc s; char oc ';') s; char oc '}';;
+
+let htbl ppkey ppval oc ht =
+  (*Hashtbl.iter (opair oc)*)
+  List.iter (opair ppkey ppval oc) (sorted_bindings ht);;
 
 let hstats oc hs =
   let open Hashtbl in
@@ -249,6 +338,8 @@ let hmk_abs(t,u) = share_term (Abs(t,u));;
 (****************************************************************************)
 (* Functions on types. *)
 (****************************************************************************)
+
+let is_var_or_cst_type = function Tyvar _ | Tyapp(_,[]) -> true | _ -> false;;
 
 (* Printing function for debug. *)
 let rec otyp oc b =
@@ -366,18 +457,33 @@ let arity =
   in arity 0
 ;;
 
+(* [size_type b] computes the tree size of a type [b]. *)
+let rec size_type = function
+  | Tyvar _ -> 1
+  | Tyapp(_,bs) -> add_size_types 1 bs
+
+and add_size_types acc bs =
+  List.fold_left (fun acc b -> acc + size_type b) acc bs;;
+
 (****************************************************************************)
 (* Functions on terms. *)
 (****************************************************************************)
 
+let is_var_or_cst_term = function Var _ | Const _ -> true | _ -> false;;
+
 (* [get_vartype t] returns the type of [t] assuming that [t] is a variable. *)
 let get_vartype = function Var(_,b) -> b | _ -> assert false;;
 
-(* [size t] computes the number of term constructors in [t]. *)
-let rec size = function
+(* [nb_cons t] computes the number of term constructors in the term [t]. *)
+let rec nb_cons = function
   | Var _ | Const _ -> 1
-  | Comb(u,v) -> 1 + size u + size v
-  | Abs(_,v) -> 2 + size v
+  | Comb(u,v) | Abs(u,v) -> 1 + nb_cons u + nb_cons v
+;;
+
+(* [size_term t] computes the tree size of the term [t]. *)
+let rec size_term = function
+  | Var (_,b) | Const(_,b) -> 1 + size_type b
+  | Comb(u,v) | Abs(u,v) -> 1 + size_term u + size_term v
 ;;
 
 (* Printing function for debug. *)
@@ -398,8 +504,8 @@ module SetTrm = Set.Make(OrdTrm);;
 
 let ormap oc m = MapTrm.iter (fun t n -> out oc "(%a,%s)" oterm t n) m;;
 
-(* [head_args t] returns the pair [h,ts] such that [t] is of the t is
-   the Comb application of [h] to [ts]. *)
+(* [head_args t] returns the pair [h,ts] such that [t] is the
+   application of [h] to [ts] and [h] is not a [Comb]. *)
 let head_args =
   let rec aux acc t =
     match t with
@@ -565,15 +671,17 @@ let canonical_term =
 (* Canonical term for alpha-equivalence with sharing. *)
 (****************************************************************************)
 
-(* [canonical_term t] returns [tvs,vs,bs,u] where [tvs] are the type
-   variables of [t], [vs] are the free term variables of [t], [bs] are
-   the types of [vs], and [u] is a term similar to [t] except that
-   [tvs] are replaced by canonical type variables [a0, a1, ...], [vs]
-   are replaced by canonical term variables [x0, x1, ...], and the
-   abstracted term variables are replaced by canonical variables [y0,
-   y1, ...]. Hence, if [t'] is alpha-equivalent to [t], then
-   [canonical_term t' = u]. *)
-let canonical_term =
+(* [canonical_term t] returns [tvs,vs,bs,u,n] where:
+- [tvs] are the type variables of [t],
+- [vs] are the free term variables of [t],
+- [bs] are the types of [vs],
+- [u] is a term similar to [t] except that [tvs] are replaced by
+   canonical type variables [a0, a1, ...], [vs] are replaced by
+   canonical term variables [x0, x1, ...], and the abstracted term
+   variables are replaced by canonical variables [y0, y1, ...]. Hence,
+   if [t'] is alpha-equivalent to [t], then [canonical_term t' = u]. *)
+let canonical_term
+    : term -> hol_type list * term list * hol_type list * term =
   (*let a_max = ref 0 and x_max = ref 0 and y_max = ref 0 in*)
   let sy = Array.init 50 (fun i -> "y" ^ string_of_int i) in
   (* [subst i su t] applies [su] on [t] and rename abstracted
@@ -613,6 +721,67 @@ let canonical_term =
 (****************************************************************************)
 (* Functions on proofs. *)
 (****************************************************************************)
+
+(* [size_content nb_type_vars nb_term_vars content] computes an
+   approximation of the tree size of the Dedukti representation of the
+   proof [content]. *)
+let size_content nb_type_vars nb_term_vars nb_hyps c =
+  let typ = 1 + 2*nb_type_vars in
+  let trm = typ + 2*nb_term_vars in
+  let prf = trm + 2*nb_hyps in
+  let step(nb_types,nb_terms,nb_proofs) =
+    1 + nb_types*(1+typ) + nb_terms*(1+trm) + nb_proofs*(1+prf) in
+  match c with
+  | Prefl _ -> step(1,1,0)
+  | Psym _ -> step(1,2,1)
+  | Ptrans _ -> step(1,3,2)
+  | Pmkcomb _ -> step(2,4,2)
+  | Pabs _ -> step(3,2,1)
+  | Pbeta _ -> step(1,1,0)
+  | Passume _ -> 1
+  | Peqmp _ -> step(0,2,2)
+  | Pdeduct _ -> step(0,4,2)
+  | Pinst(_,s) -> let n = List.length s in step(n,n,1)
+  | Pinstt(_,s) -> let n = List.length s in step(n,n,1)
+  | Paxiom _ -> step(1,1,0)
+  | Pdef _ -> step(1,1,0)
+  | Pdeft _ -> step(1,1,0)
+  | Ptruth -> 1
+  | Pconj _ -> step(0,2,2)
+  | Pconjunct1 _ -> step(0,2,2)
+  | Pconjunct2 _ -> step(0,2,2)
+  | Pmp _ -> step(0,0,2)
+  | Pdisch _ -> step(0,1,1)
+  | Pspec _ -> step(0,1,1)
+  | Pgen _ -> step(1,0,1)
+  | Pexists _ -> step(1,2,1)
+  | Pdisj1 _ -> step(0,2,1)
+  | Pdisj2 _ -> step(0,2,1)
+  | Pdisj_cases _ -> step(0,5,3)
+  | Pchoose _ -> step(3,3,2)
+;;
+
+(* [size_proof p] computes an approximation of the tree size of the
+   Dedukti representation of the proof [p]. *)
+let size_proof (Proof(thm, content)) =
+  let (ts,t) = dest_thm thm in
+  let nb_type_vars = List.length (type_vars_in_thm thm)
+  and nb_term_vars = List.length (Fusion.freesl (t::ts))
+  and nb_hyps = List.length ts in
+  let typ = 1 + 2*nb_type_vars in
+  let trm = typ + 2*nb_term_vars in
+  1 + 2*nb_type_vars + 2*nb_term_vars*typ + 2*nb_hyps*trm
+  + size_content nb_type_vars nb_term_vars nb_hyps content
+;;
+
+(* [size_abbrev a] computes an approximation of the tree size of the
+   Dedukti representation of the term abbreviation [a]. *)
+let size_abbrev (t,(_,ltvs,bs)) =
+  let nb_type_vars = ltvs in
+  let nb_term_vars = List.length bs in
+  let typ = 1 + 2*ltvs in
+  1 + 2*nb_type_vars + 2*nb_term_vars*typ + size_term t
+;;
 
 (* [proof oc p] prints the proof [p] on out_channel [oc] in a user
    readable format. *)
@@ -931,9 +1100,9 @@ let hmk_const l (s,b) = share_subterm l (Const(share_string s, htype b));;
 let hmk_comb l (t,u) = share_subterm l (Comb(t,u));;
 let hmk_abs l (t,u) = share_subterm l (Abs(t,u));;
 
-(* [shared t] returns [u,l] where [u] is a variable and [l] is a term
-   substitution so that the repeated application of [l] to [u] gives
-   [t]. *)
+(* [shared t] returns [u,l] where [u] is a variable and [l] is like a
+   term substitution such that the repeated application of [l] to [u]
+   gives [t]. *)
 let shared t =
   (*log "\nshared %a\n" oterm t;*)
   let l = ref [] in

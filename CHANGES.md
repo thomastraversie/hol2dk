@@ -3,6 +3,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+Big improvements in Lambdapi and Coq file generation time, and Coq checking time.
+
+### Added
+
+- hol2dk can now generate term abbreviations and proofs in several files
+in parallel:
+  * The option --max-size-abbrev allows to fix the maximum size for term abbreviations files.
+  * The option --max-size-proof allows to fix the maximum size for proof files.
+- optimization of lp file dependencies in generated lp files.
+- generation of Makefile lpo dependencies at the same time as lp files.
+- Makefile: lpo and vo dependencies are recomputed automatically.
+- Makefile target [un]spec: to generate axiom versions of each theorem
+
+### Changed
+
+- FILES_WITH_SHARING renamed into BIG_FILES and not added by add-links anymore
+- command dump[-simp]-use renamed into dump[-simp]-before-hol
+
 ## 1.0.0 (2024-02-25)
 
 ### Added
