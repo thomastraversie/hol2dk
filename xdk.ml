@@ -516,7 +516,7 @@ let proof tvs rmap =
     | Pdisch(t,k) -> 
       let p = proof_at k in
       let Proof(th,_) = p in
-      string oc "imp_intro "; term oc t; char ' '; term oc (concl th); string oc " ("; 
+      string oc "imp_intro "; term oc t; char oc ' '; term oc (concl th); string oc " ("; 
       hyp_var ts oc t; string oc " : Prf "; term oc t; string oc " => ";
       sub_at oc k; char oc ')'
     | Pspec(t,k) -> 
